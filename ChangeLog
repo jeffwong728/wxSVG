@@ -1,5 +1,19 @@
-git
----
+Version 1.5.22 <2019-12-27>
+---------------------------
+
+  * wxSVGImage: fixed loading of video frames
+  * added support of rgba colors
+
+Version 1.5.21 <2019-10-05>
+---------------------------
+
+  * fixed renedring of symbol elements
+  * fixed handling of spaces in transform attribute
+  * added support of grayscale mask
+  * added initial support of switch element
+
+Version 1.5.20 <2019-08-02>
+---------------------------
 
   * added handling of fill-rule
   * added handling of spreadMethod

@@ -245,6 +245,8 @@ void wxSVGCanvasCairo::SetPaint(cairo_t* cr, const wxSVGPaint& paint, float opac
 		}
 	} else {
 		wxRGBColor color = paint.GetRGBColor();
+		if (color.Alpha() != 255)
+			opacity = opacity * color.Alpha() / 255.0;
 		cairo_set_source_rgba(cr, color.Red() / 255.0, color.Green() / 255.0, color.Blue() / 255.0, opacity);
 	}
 }
@@ -444,6 +446,27 @@ void wxSVGCanvasCairo::DrawPath(cairo_t* cr, wxSVGCanvasPathCairo& canvasPath, c
 	}
 }
 
+void convertMaskRGB2Alpha(cairo_surface_t *img) {
+    cairo_surface_flush(img);
+    unsigned char *current_row = cairo_image_surface_get_data(img);
+    int stride = cairo_image_surface_get_stride(img);
+    for (int y = 0; y < cairo_image_surface_get_height(img); y++) {
+        uint32_t *row = (uint32_t*) current_row;
+        for (int x = 0; x < cairo_image_surface_get_width(img); x++) {
+        	double a = (double) (row[x] >> 24) / 255;
+        	double r = (double) (row[x] >> 16 & 0xFF) / 255;
+        	double g = (double) (row[x] >> 8 & 0xFF) / 255;
+        	double b = (double) (row[x] & 0xFF) / 255;
+        	double a1 = 0.299*r + 0.587*g + 0.114*b;
+        	a = a < a1 ? a : a1;
+            uint32_t a2 = a * 255;
+            row[x] = (a2 << 24) + 0xffffff;
+        }
+        current_row += stride;
+    }
+    cairo_surface_mark_dirty(img);
+}
+
 void wxSVGCanvasCairo::DrawCanvasPath(wxSVGCanvasPathCairo& canvasPath, wxSVGMatrix& matrix,
 		const wxCSSStyleDeclaration& style, wxSVGSVGElement& svgElem) {
 	// clipPath
@@ -511,6 +534,9 @@ void wxSVGCanvasCairo::DrawCanvasPath(wxSVGCanvasPathCairo& canvasPath, wxSVGMat
 			m_cr = maskCr;
 			RenderChilds(maskElem, NULL, &maskMatrix, &maskStyle, &svgElem, &svgElem, NULL);
 			m_cr = tmp;
+			
+			// black is transparent
+			convertMaskRGB2Alpha(maskSurface);
 			
 			// draw surface
 			cairo_surface_t* surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, width, height);
